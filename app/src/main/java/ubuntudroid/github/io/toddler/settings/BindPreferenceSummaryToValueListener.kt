@@ -9,6 +9,7 @@ import android.text.TextUtils
 import com.squareup.otto.Bus
 import ubuntudroid.github.io.toddler.R
 import ubuntudroid.github.io.toddler.events.AccountChangedEvent
+import ubuntudroid.github.io.toddler.events.ServerChangedEvent
 import ubuntudroid.github.io.toddler.settings.di.DaggerSettingsComponent
 import javax.inject.Inject
 
@@ -67,10 +68,10 @@ class BindPreferenceSummaryToValueListener: Preference.OnPreferenceChangeListene
             preference?.summary = stringValue
         }
 
-        if (preference?.key.equals("password")
-                || preference?.key.equals("login")
-                || preference?.key.equals("server")) {
-            appBus.post(AccountChangedEvent())
+        when (preference?.key) {
+            "password" -> appBus.post(AccountChangedEvent())
+            "login" -> appBus.post(AccountChangedEvent())
+            "server" -> appBus.post(ServerChangedEvent())
         }
         return true
     }

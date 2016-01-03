@@ -18,6 +18,7 @@ import rx.schedulers.Schedulers
 import ubuntudroid.github.io.toddler.R
 import ubuntudroid.github.io.toddler.User
 import ubuntudroid.github.io.toddler.events.AccountChangedEvent
+import ubuntudroid.github.io.toddler.events.ServerChangedEvent
 import ubuntudroid.github.io.toddler.main.di.DaggerMainComponent
 import ubuntudroid.github.io.toddler.provider.jira.JiraService
 import ubuntudroid.github.io.toddler.provider.jira.models.IssueResponse
@@ -91,19 +92,25 @@ class TaskFragment : Fragment(), TaskRecyclerViewAdapter.OnIssueInteractionListe
 
     @Subscribe
     fun onAccountChanged(accountChangedEvent: AccountChangedEvent) {
-        refresh()
+        restartFragment()
+    }
+
+    @Subscribe
+    fun onServerChanged(serverChangedEvent: ServerChangedEvent) {
+        restartFragment()
     }
 
     private fun refresh() {
         requestSubscription?.unsubscribe()
         recyclerAdapter?.clear()
 
-        if (context == null && !User.isUserAvailable(application)) {
+        if (context == null) {
             return
         }
 
+        val query = "assignee=${User.getLogin(application)} AND status != resolved ORDER BY priority ASC"
         requestSubscription = jiraService
-                .performJqlQuery("assignee=${User.getLogin(application)} AND status != Done AND status != \"Won't fix\" ORDER BY priority ASC", 0, -1)
+                .performJqlQuery(query, 0, 50)
                 .subscribeOn(Schedulers.io())
                 .observeOn(AndroidSchedulers.mainThread())
                 .unsubscribeOn(Schedulers.io()) // workaround for https://github.com/square/okhttp/issues/1592
@@ -120,6 +127,15 @@ class TaskFragment : Fragment(), TaskRecyclerViewAdapter.OnIssueInteractionListe
                         recyclerAdapter?.appendIssues(response?.issues)
                     }
                 })
+    }
+
+    private fun restartFragment() {
+        if (!isDetached) {
+            val transaction = fragmentManager.beginTransaction()
+            transaction.detach(this)
+            transaction.attach(this)
+            transaction.commit()
+        }
     }
 
     override fun onCreateOptionsMenu(menu: Menu?, inflater: MenuInflater?) {
